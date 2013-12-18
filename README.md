@@ -1,8 +1,6 @@
 Overview
 --------
-This is a backend for the Lager.
-
-https://github.com/basho/lager
+This is a backend for the [Lager](https://github.com/basho/lager)
 
 It will send logs out of lager to systemd journald.
 
@@ -11,13 +9,13 @@ Configuration
 -------------
 Configure Lager like this:
 
-  {handlers, [
+  '{handlers, [
       {lager_journald_backend, [{level, info}]}]}
-  ]}
+  ]}'
 
 All logs with the level of the configuration or higher will be send to journald.
 The default level is info, so in the case above you can simply write:
 
-  {handlers, [
+  '{handlers, [
       {lager_journald_backend, []}]}
-  ]}
+  ]}'
