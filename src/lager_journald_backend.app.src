@@ -1,0 +1,5 @@
+{application, lager_journald_backend, [
+    {description, "journald backend for lager"},
+    {vsn, ["0.0"]},
+    {applications, [kernel, stdlib, lager]},
+]}.
