@@ -19,3 +19,7 @@ The default level is info, so in the case above you can simply write:
   `{handlers, [
       {lager_journald_backend, []}]}
   ]}`
+
+Dependency
+----------
+lager_journald_backend uses [ejournald](https://github.com/travelping/ejournald).
