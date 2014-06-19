@@ -7,7 +7,7 @@
 -export([init/1, handle_call/2, handle_event/2, handle_info/2, terminate/2,
         code_change/3]).
 
--record(state, {level, formatter, formatter_config}).
+-record(state, {level, formatter, formatter_config, service}).
 
 %-include("lager.hrl").
 
@@ -17,7 +17,8 @@
 init(Config) ->
     [Level, Formatter, FormatterConfig] = [proplists:get_value(K, Config, Def) || {K, Def} <- 
         [{level, info}, {formatter, lager_default_formatter}, {formatter_config, ?JOURNALD_FORMAT}]],
-    State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level)},
+    Service = application:get_env(lager, service, "unknown"),
+    State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level), service=Service},
     {ok, State}.
 
 %% @private
@@ -60,28 +61,39 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Internal functions
 
-write(Msg, #state{formatter=F, formatter_config=FConf}) ->
+write(Msg, #state{formatter=F, formatter_config=FConf, service=Service}) ->
     Text0 = F:format(Msg, FConf) -- ["\n"],
     Level = lager_msg:severity(Msg),
     Metadata = lager_msg:metadata(Msg),
-    App      = proplists:get_value(application, Metadata),
-    Pid      = proplists:get_value(pid, Metadata),
-    Node     = proplists:get_value(node, Metadata),
-    CodeFile = proplists:get_value(module, Metadata),
-    CodeLine = proplists:get_value(line, Metadata),
-    CodeFunc = proplists:get_value(function, Metadata),
     ok = journald_api:sendv(
-        [{E,V} || {E,V} <- [
-            {"MESSAGE", Text0}, 
-            {"PRIORITY", level_to_num(Level)},
-            {"SYSLOG_IDENTIFIER", App},
-            {"SYSLOG_PID", Pid},
-            {"ERLANG_NODE", Node},
-            {"CODE_FILE", CodeFile},
-            {"CODE_FUNC", CodeFunc},
-            {"CODE_LINE", CodeLine}
-        ], V /= undefined]
+        [{"SERVICE", Service},
+         {"MESSAGE", Text0}, 
+         {"PRIORITY", level_to_num(Level)}] ++
+        lists:flatmap(fun format_metadata/1, Metadata)
     ).
+
+% don't log file and line
+format_metadata({file, _}) -> [];
+format_metadata({line, _}) -> [];
+% only log defined built-in tags
+format_metadata({application, undefined}) -> [];
+format_metadata({application, App}) -> [{"APPLICATION", App}];
+format_metadata({pid, undefined}) -> [];
+format_metadata({pid, Pid}) -> [{"PID", Pid}];
+format_metadata({node, undefined}) -> [];
+format_metadata({node, Node}) -> [{"ERLANG_NODE", Node}];
+format_metadata({function, undefined}) -> [];
+format_metadata({function, CodeFunc}) -> [{"CODE_FUNC", CodeFunc}];
+format_metadata({module, undefined}) -> [];
+format_metadata({module, CodeFile}) -> [{"CODE_FIle", CodeFile}];
+% log all custom tags
+format_metadata({CustomTag, Value}) when is_binary(Value) ->
+    case uuid:is_uuid(Value) of
+        true -> [{atom_to_list(CustomTag), uuid:string_to_uuid(Value)}];
+        false -> [{atom_to_list(CustomTag), Value}]
+    end;
+format_metadata({CustomTag, Value}) -> [{atom_to_list(CustomTag), Value}].
+
 
 level_to_num(debug) -> 7;
 level_to_num(info) -> 6;
