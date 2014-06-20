@@ -91,7 +91,7 @@ format_metadata({module, CodeFile}) -> [{"CODE_FIle", CodeFile}];
 % log all custom tags
 format_metadata({CustomTag, Value}) when is_binary(Value) ->
     case uuid:is_uuid(Value) of
-        true -> [{atom_to_list(CustomTag), uuid:string_to_uuid(Value)}];
+        true -> [{atom_to_list(CustomTag), uuid:uuid_to_string(Value)}];
         false -> [{atom_to_list(CustomTag), Value}]
     end;
 format_metadata({CustomTag, Value}) -> [{atom_to_list(CustomTag), Value}].
