@@ -87,7 +87,7 @@ format_metadata({node, Node}) -> [{"ERLANG_NODE", Node}];
 format_metadata({function, undefined}) -> [];
 format_metadata({function, CodeFunc}) -> [{"CODE_FUNC", CodeFunc}];
 format_metadata({module, undefined}) -> [];
-format_metadata({module, CodeFile}) -> [{"CODE_FIle", CodeFile}];
+format_metadata({module, CodeFile}) -> [{"CODE_FILE", CodeFile}];
 % log all custom tags
 format_metadata({CustomTag, Value}) when is_binary(Value) ->
     case uuid:is_uuid(Value) of
