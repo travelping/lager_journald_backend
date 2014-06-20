@@ -68,6 +68,8 @@ write(Msg, #state{formatter=F, formatter_config=FConf, service=Service}) ->
     ok = journald_api:sendv(
         [{"SERVICE", Service},
          {"MESSAGE", Text0}, 
+         {"SYSLOG_IDENTIFIER", "container"}, 
+         {"SYSLOG_FACILITY", 3}, 
          {"PRIORITY", level_to_num(Level)}] ++
         lists:flatmap(fun format_metadata/1, Metadata)
     ).
