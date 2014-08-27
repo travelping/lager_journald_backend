@@ -108,7 +108,7 @@ level_to_num(critical) -> 2;
 level_to_num(alert) -> 1;
 level_to_num(emergency) -> 0.
 
-get_effective_level(Message, #state{level = L, level_overrides = LevelOverrides}) ->
+get_effective_level(Message, #state{level=L, level_overrides=LevelOverrides}) ->
     case lists:keyfind(module, 1, lager_msg:metadata(Message)) of
         {module, Module} ->
             case maps:find(Module, LevelOverrides) of
