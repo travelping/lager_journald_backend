@@ -7,7 +7,7 @@
 -export([init/1, handle_call/2, handle_event/2, handle_info/2, terminate/2,
         code_change/3]).
 
--record(state, {level, formatter, formatter_config, service}).
+-record(state, {level, formatter, formatter_config, service, level_overrides}).
 
 %-include("lager.hrl").
 
@@ -15,10 +15,12 @@
 
 %% @private
 init(Config) ->
-    [Level, Formatter, FormatterConfig] = [proplists:get_value(K, Config, Def) || {K, Def} <- 
-        [{level, info}, {formatter, lager_default_formatter}, {formatter_config, ?JOURNALD_FORMAT}]],
+    [Level, Formatter, FormatterConfig, LevelOverrideList] = [proplists:get_value(K, Config, Def) || {K, Def} <- 
+        [{level, info}, {formatter, lager_default_formatter}, {formatter_config, ?JOURNALD_FORMAT}, {level_overrides, []}]],
     Service = application:get_env(lager, service, "unknown"),
-    State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level), service=Service},
+    %% level_overrides is a list of {module, level}, i.e. [{foo, info}, {bar, warning}]
+    LevelOverrides = maps:from_list(lists:map(fun ({M, L}) -> {M, lager_util:level_to_num(L)} end, LevelOverrideList)),
+    State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level), service=Service, level_overrides=LevelOverrides},
     {ok, State}.
 
 %% @private
@@ -36,8 +38,8 @@ handle_call(_Request, State) ->
     {ok, ok, State}.
 
 %% @private
-handle_event({log, Message}, #state{level=L} = State) ->
-    case lager_util:is_loggable(Message, L, ?MODULE) of
+handle_event({log, Message}, #state{} = State) ->
+    case lager_util:is_loggable(Message, get_effective_level(Message, State), ?MODULE) of
         true ->
             ok = write(Message, State),
             {ok, State};
@@ -105,3 +107,13 @@ level_to_num(error) -> 3;
 level_to_num(critical) -> 2;
 level_to_num(alert) -> 1;
 level_to_num(emergency) -> 0.
+
+get_effective_level(Message, #state{level=L, level_overrides=LevelOverrides}) ->
+    case lists:keyfind(module, 1, lager_msg:metadata(Message)) of
+        {module, Module} ->
+            case maps:find(Module, LevelOverrides) of
+                {ok, Override} -> Override;
+                _ -> L
+            end;
+        _ -> L
+    end.
