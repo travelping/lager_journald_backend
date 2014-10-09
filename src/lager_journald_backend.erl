@@ -67,14 +67,26 @@ write(Msg, #state{formatter=F, formatter_config=FConf, service=Service}) ->
     Text0 = F:format(Msg, FConf) -- ["\n"],
     Level = lager_msg:severity(Msg),
     Metadata = lager_msg:metadata(Msg),
-    ok = journald_api:sendv(
-        [{"SERVICE", Service},
-         {"MESSAGE", Text0}, 
-         {"SYSLOG_IDENTIFIER", "container"}, 
-         {"SYSLOG_FACILITY", 3}, 
-         {"PRIORITY", level_to_num(Level)}] ++
-        lists:flatmap(fun format_metadata/1, Metadata)
-    ).
+    BasicTags =  [{"SERVICE", Service},
+                  {"MESSAGE", Text0}, 
+                  {"SYSLOG_IDENTIFIER", "container"}, 
+                  {"SYSLOG_FACILITY", 3}, 
+                  {"PRIORITY", level_to_num(Level)}],
+    CustomTags = lists:flatmap(fun format_metadata/1, Metadata) ,
+    % journald has a hidden limit on number of fields it allows
+    % https://github.com/systemd/systemd/blob/36d054aae0847df38687640909304dde1452b22d/src/journal/journald-server.h#L149
+    case length(CustomTags) of
+        N when N < 12 ->
+            ok = journald_api:sendv(BasicTags ++ CustomTags);
+        _ -> 
+            WarningTags = [{"SERVICE", Service},
+                           {"MESSAGE", "Message logged with too many tags: " ++ Text0},  
+                           {"SYSLOG_IDENTIFIER", "container"}, 
+                           {"SYSLOG_FACILITY", 3}, 
+                           {"PRIORITY", level_to_num(error)}],
+            ok = journald_api:sendv(WarningTags),
+            ok = journald_api:sendv(BasicTags ++ list:sublist(CustomTags, 11))
+    end.
 
 % don't log file and line
 format_metadata({file, _}) -> [];
