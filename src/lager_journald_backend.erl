@@ -12,6 +12,7 @@
 %-include("lager.hrl").
 
 -define(JOURNALD_FORMAT, [message]).
+-define(MAX_CUSTOM_TAGS, 7).
 
 %% @private
 init(Config) ->
@@ -75,8 +76,9 @@ write(Msg, #state{formatter=F, formatter_config=FConf, service=Service}) ->
     CustomTags = lists:flatmap(fun format_metadata/1, Metadata) ,
     % journald has a hidden limit on number of fields it allows
     % https://github.com/systemd/systemd/blob/36d054aae0847df38687640909304dde1452b22d/src/journal/journald-server.h#L149
+    % having a max of 12 tags seems safest, although we may be able to relax that later
     case length(CustomTags) of
-        N when N < 12 ->
+        N when N =< ?MAX_CUSTOM_TAGS ->
             ok = journald_api:sendv(BasicTags ++ CustomTags);
         _ -> 
             WarningTags = [{"SERVICE", Service},
@@ -85,23 +87,17 @@ write(Msg, #state{formatter=F, formatter_config=FConf, service=Service}) ->
                            {"SYSLOG_FACILITY", 3}, 
                            {"PRIORITY", level_to_num(error)}],
             ok = journald_api:sendv(WarningTags),
-            ok = journald_api:sendv(BasicTags ++ list:sublist(CustomTags, 11))
+            ok = journald_api:sendv(BasicTags ++ list:sublist(CustomTags, ?MAX_CUSTOM_TAGS))
     end.
 
-% don't log file and line
+% hide useless built-in metadata
 format_metadata({file, _}) -> [];
 format_metadata({line, _}) -> [];
-% only log defined built-in tags
-format_metadata({application, undefined}) -> [];
-format_metadata({application, App}) -> [{"APPLICATION", App}];
-format_metadata({pid, undefined}) -> [];
-format_metadata({pid, Pid}) -> [{"PID", Pid}];
-format_metadata({node, undefined}) -> [];
-format_metadata({node, Node}) -> [{"ERLANG_NODE", Node}];
-format_metadata({function, undefined}) -> [];
-format_metadata({function, CodeFunc}) -> [{"CODE_FUNC", CodeFunc}];
-format_metadata({module, undefined}) -> [];
-format_metadata({module, CodeFile}) -> [{"CODE_FILE", CodeFile}];
+format_metadata({application, _}) -> [];
+format_metadata({pid, _}) -> [];
+format_metadata({node, _}) -> [];
+format_metadata({function, _}) -> [];
+format_metadata({module, _}) -> [];
 % log all custom tags
 format_metadata({CustomTag, Value}) when is_binary(Value) ->
     case uuid:is_uuid(Value) of
