@@ -1,6 +1,8 @@
-{application, lager_journald_backend, [
-    {description, "journald backend for lager"},
-    {vsn, ["0.0"]},
-    {applications, [kernel, stdlib, lager]},
-    {included_applications, [ejournald]}
+{application, lager_journald_backend, 
+ [
+  {description, "journald backend for lager"},
+  {vsn, ["0.0"]},
+  {modules, []},
+  {applications, [kernel, stdlib, lager]},
+  {included_applications, [ejournald]}
 ]}.
