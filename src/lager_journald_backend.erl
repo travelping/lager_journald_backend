@@ -70,6 +70,11 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     CodeFile = proplists:get_value(module, Metadata),
     CodeLine = proplists:get_value(line, Metadata),
     CodeFunc = proplists:get_value(function, Metadata),
+    IP       = proplists:get_value(ip, Metadata),
+    Port     = proplists:get_value(port, Metadata),
+    Socket   = proplists:get_value(socket, Metadata),
+    State    = proplists:get_value(state, Metadata),
+    ClientIP = proplists:get_value(clientIP, Metadata),
     ok = journald_api:sendv(
         [{E,V} || {E,V} <- [
             {"MESSAGE", Text0}, 
@@ -78,8 +83,13 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
             {"SYSLOG_PID", Pid},
             {"ERLANG_NODE", Node},
             {"CODE_FILE", CodeFile},
+            {"CODE_LINE", CodeLine},
             {"CODE_FUNC", CodeFunc},
-            {"CODE_LINE", CodeLine}
+            {"IP", IP},
+            {"PORT", Port},
+            {"SOCKET", Socket},
+            {"STATE", State},
+            {"CLIENT_IP", ClientIP}
         ], V /= undefined]
     ).
 
