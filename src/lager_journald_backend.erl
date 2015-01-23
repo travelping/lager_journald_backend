@@ -64,34 +64,10 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     Text0 = F:format(Msg, FConf) -- ["\n"],
     Level = lager_msg:severity(Msg),
     Metadata = lager_msg:metadata(Msg),
-    App      = proplists:get_value(application, Metadata),
-    Pid      = proplists:get_value(pid, Metadata),
-    Node     = proplists:get_value(node, Metadata),
-    CodeFile = proplists:get_value(module, Metadata),
-    CodeLine = proplists:get_value(line, Metadata),
-    CodeFunc = proplists:get_value(function, Metadata),
-    IP       = proplists:get_value(ip, Metadata),
-    Port     = proplists:get_value(port, Metadata),
-    Socket   = proplists:get_value(socket, Metadata),
-    State    = proplists:get_value(state, Metadata),
-    ClientIP = proplists:get_value(clientIP, Metadata),
-    ok = journald_api:sendv(
-        [{E,V} || {E,V} <- [
-            {"MESSAGE", Text0}, 
-            {"PRIORITY", level_to_num(Level)},
-            {"SYSLOG_IDENTIFIER", App},
-            {"SYSLOG_PID", Pid},
-            {"ERLANG_NODE", Node},
-            {"CODE_FILE", CodeFile},
-            {"CODE_LINE", CodeLine},
-            {"CODE_FUNC", CodeFunc},
-            {"IP", IP},
-            {"PORT", Port},
-            {"SOCKET", Socket},
-            {"STATE", State},
-            {"CLIENT_IP", ClientIP}
-        ], V /= undefined]
-    ).
+    Metalist = [{"MESSAGE", Text0},
+                {"PRIORITY", level_to_num(Level)}] ++
+               [{string:to_upper(atom_to_list(M)),V} || {M,V} <- Metadata],
+    ok = journald_api:sendv(Metalist).
 
 level_to_num(debug) -> 7;
 level_to_num(info) -> 6;
