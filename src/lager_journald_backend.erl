@@ -66,7 +66,7 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     Metadata = lager_msg:metadata(Msg),
     Metalist = [{"MESSAGE", Text0},
                 {"PRIORITY", level_to_num(Level)}] ++
-               [{string:to_upper(atom_to_list(M)),V} || {M,V} <- Metadata],
+               [{string:to_upper(atom_to_list(M)),io_lib:format("~p",[V])} || {M,V} <- Metadata],
     ok = journald_api:sendv(Metalist).
 
 level_to_num(debug) -> 7;
