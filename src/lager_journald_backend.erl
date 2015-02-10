@@ -66,8 +66,13 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     Metadata = lager_msg:metadata(Msg),
     Metalist = [{"MESSAGE", Text0},
                 {"PRIORITY", level_to_num(Level)}] ++
-               [{string:to_upper(atom_to_list(M)),io_lib:format("~p",[V])} || {M,V} <- Metadata],
+               [{journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata],
     ok = journald_api:sendv(Metalist).
+
+% Adjustment of the key to the accepted formatting of Journald
+journal_format(Key) ->
+    HKey = string:to_upper(atom_to_list(Key)),
+    re:replace(HKey, "[^a-zA-Z0-9]", "_", [global, {return, list}]).
 
 level_to_num(debug) -> 7;
 level_to_num(info) -> 6;
