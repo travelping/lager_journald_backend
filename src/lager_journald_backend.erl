@@ -1,3 +1,4 @@
+
 %% @doc Journald backend for lager. Configured with a loglevel, formatter and formatter config.
 
 -module(lager_journald_backend).
@@ -18,7 +19,7 @@
 
 %% @private
 init(Config) ->
-    [Level, Formatter, FormatterConfig] = [proplists:get_value(K, Config, Def) || {K, Def} <- 
+    [Level, Formatter, FormatterConfig] = [proplists:get_value(K, Config, Def) || {K, Def} <-
         [{level, info}, {formatter, lager_default_formatter}, {formatter_config, ?JOURNALD_FORMAT}]],
     State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level)},
     {ok, State}.
