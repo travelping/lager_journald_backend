@@ -12,6 +12,9 @@
 %-include("lager.hrl").
 
 -define(JOURNALD_FORMAT, [message]).
+-define(CONTAINS(List,Elem), lists:any(fun(X)->X==Elem end, List)).
+-define(LAGER_PROVIDED_META, [pid,file,line,module,function,node,date,time,message,severity]).
+-define(ERL_PREFIXED_META, ?LAGER_PROVIDED_META ++ [application]).
 
 %% @private
 init(Config) ->
@@ -64,9 +67,12 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     Text0 = F:format(Msg, FConf) -- ["\n"],
     Level = lager_msg:severity(Msg),
     Metadata = lager_msg:metadata(Msg),
-    Metalist = [{"MESSAGE", Text0},
-                {"PRIORITY", level_to_num(Level)}] ++
-               [{journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata],
+    Metalist =  [{"MESSAGE", Text0},
+                 {"PRIORITY", level_to_num(Level)}] ++
+                [{journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata,
+                 not ?CONTAINS(?ERL_PREFIXED_META, K) ] ++
+                [{"ERL_"++journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata,
+                 ?CONTAINS(?ERL_PREFIXED_META, K) ],
     ok = journald_api:sendv(Metalist).
 
 % Adjustment of the key to the accepted formatting of Journald
