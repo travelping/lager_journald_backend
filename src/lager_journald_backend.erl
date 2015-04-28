@@ -1,3 +1,4 @@
+
 %% @doc Journald backend for lager. Configured with a loglevel, formatter and formatter config.
 
 -module(lager_journald_backend).
@@ -12,10 +13,13 @@
 %-include("lager.hrl").
 
 -define(JOURNALD_FORMAT, [message]).
+-define(CONTAINS(List,Elem), lists:any(fun(X)->X==Elem end, List)).
+-define(LAGER_PROVIDED_META, [pid,file,line,module,function,node,date,time,message,severity]).
+-define(ERL_PREFIXED_META, ?LAGER_PROVIDED_META ++ [application]).
 
 %% @private
 init(Config) ->
-    [Level, Formatter, FormatterConfig] = [proplists:get_value(K, Config, Def) || {K, Def} <- 
+    [Level, Formatter, FormatterConfig] = [proplists:get_value(K, Config, Def) || {K, Def} <-
         [{level, info}, {formatter, lager_default_formatter}, {formatter_config, ?JOURNALD_FORMAT}]],
     State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level)},
     {ok, State}.
@@ -64,34 +68,18 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     Text0 = F:format(Msg, FConf) -- ["\n"],
     Level = lager_msg:severity(Msg),
     Metadata = lager_msg:metadata(Msg),
-    App      = proplists:get_value(application, Metadata),
-    Pid      = proplists:get_value(pid, Metadata),
-    Node     = proplists:get_value(node, Metadata),
-    CodeFile = proplists:get_value(module, Metadata),
-    CodeLine = proplists:get_value(line, Metadata),
-    CodeFunc = proplists:get_value(function, Metadata),
-    IP       = proplists:get_value(ip, Metadata),
-    Port     = proplists:get_value(port, Metadata),
-    Socket   = proplists:get_value(socket, Metadata),
-    State    = proplists:get_value(state, Metadata),
-    ClientIP = proplists:get_value(clientIP, Metadata),
-    ok = journald_api:sendv(
-        [{E,V} || {E,V} <- [
-            {"MESSAGE", Text0}, 
-            {"PRIORITY", level_to_num(Level)},
-            {"SYSLOG_IDENTIFIER", App},
-            {"SYSLOG_PID", Pid},
-            {"ERLANG_NODE", Node},
-            {"CODE_FILE", CodeFile},
-            {"CODE_LINE", CodeLine},
-            {"CODE_FUNC", CodeFunc},
-            {"IP", IP},
-            {"PORT", Port},
-            {"SOCKET", Socket},
-            {"STATE", State},
-            {"CLIENT_IP", ClientIP}
-        ], V /= undefined]
-    ).
+    Metalist =  [{"MESSAGE", Text0},
+                 {"PRIORITY", level_to_num(Level)}] ++
+                [{journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata,
+                 not ?CONTAINS(?ERL_PREFIXED_META, K) ] ++
+                [{"ERL_"++journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata,
+                 ?CONTAINS(?ERL_PREFIXED_META, K) ],
+    ok = journald_api:sendv(Metalist).
+
+% Adjustment of the key to the accepted formatting of Journald
+journal_format(Key) ->
+    HKey = string:to_upper(atom_to_list(Key)),
+    re:replace(HKey, "[^a-zA-Z0-9]", "_", [global, {return, list}]).
 
 level_to_num(debug) -> 7;
 level_to_num(info) -> 6;
