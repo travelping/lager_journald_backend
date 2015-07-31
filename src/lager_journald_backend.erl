@@ -12,7 +12,7 @@
 %-include("lager.hrl").
 
 -define(JOURNALD_FORMAT, [message]).
--define(MAX_CUSTOM_TAGS, 7).
+-define(MAX_CUSTOM_TAGS, 6).
 
 %% @private
 init(Config) ->
