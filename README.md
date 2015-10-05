@@ -23,3 +23,12 @@ The default level is info, so in the case above you can simply write:
 Dependency
 ----------
 lager_journald_backend uses [ejournald](https://github.com/travelping/ejournald).
+
+Building
+--------
+
+You can build lager_journald_backend via rebar:
+
+```
+rebar compile
+```
