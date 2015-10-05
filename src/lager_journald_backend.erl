@@ -70,11 +70,12 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     Metadata = lager_msg:metadata(Msg),
     Metalist =  [{"MESSAGE", Text0},
                  {"PRIORITY", level_to_num(Level)}] ++
-                [{journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata,
+                [{journal_format(K), V} || {K,V} <- Metadata,
                  not ?CONTAINS(?ERL_PREFIXED_META, K) ] ++
-                [{"ERL_"++journal_format(K),io_lib:format("~p",[V])} || {K,V} <- Metadata,
+                [{"ERL_"++journal_format(K), V} || {K,V} <- Metadata,
                  ?CONTAINS(?ERL_PREFIXED_META, K) ],
     ok = journald_api:sendv(Metalist).
+
 
 % Adjustment of the key to the accepted formatting of Journald
 journal_format(Key) ->
