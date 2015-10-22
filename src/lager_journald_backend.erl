@@ -70,9 +70,9 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
     Metadata = lager_msg:metadata(Msg),
     Metalist =  [{"MESSAGE", Text0},
                  {"PRIORITY", level_to_num(Level)}] ++
-                [{journal_format(K), V} || {K,V} <- Metadata,
+                [{journal_format(K), to_list(V)} || {K,V} <- Metadata,
                  not ?CONTAINS(?ERL_PREFIXED_META, K) ] ++
-                [{"ERL_"++journal_format(K), V} || {K,V} <- Metadata,
+                [{"ERL_"++journal_format(K), to_list(V)} || {K,V} <- Metadata,
                  ?CONTAINS(?ERL_PREFIXED_META, K) ],
     ok = journald_api:sendv(Metalist).
 
@@ -90,3 +90,40 @@ level_to_num(error) -> 3;
 level_to_num(critical) -> 2;
 level_to_num(alert) -> 1;
 level_to_num(emergency) -> 0.
+
+% convert all data types accordingly, so the journal is able to process them
+% (see http://erlang.org/doc/reference_manual/data_types.html)
+% ------------------------------------------------------------
+% Number
+to_list(V) when is_integer(V) -> integer_to_list(V);
+to_list(V) when is_float(V)   -> float_to_list(V);
+% Atom
+to_list(V) when is_atom(V)    -> atom_to_binary(V, utf8);
+% Binary
+% -- will be sent through without conversion
+% Fun
+to_list(V) when is_function(V)-> io_lib:format("~p", [V]);
+% Port Identifier
+to_list(V) when is_port(V)    -> io_lib:format("~p", [V]);
+% Pid
+to_list(V) when is_pid(V)     -> pid_to_list(V);
+% Tuple
+to_list(V) when is_tuple(V)   -> io_lib:format("~p", [V]);
+% Map
+to_list(V) when is_map(V)     -> io_lib:format("~p", [V]);
+% List
+to_list(V) when is_list(V)    -> list_to_string(V);
+% String
+% -- same as list
+% Record
+% -- same as tuple
+% Boolean
+% -- same as atoms
+% anything else will given plainly to the journal api
+to_list(V) -> V.
+
+list_to_string (V) ->
+  try io_lib:format('~s', [V])
+  catch _:_ ->
+    io_lib:format('~p', [V])
+  end.
