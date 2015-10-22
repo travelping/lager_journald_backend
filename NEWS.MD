@@ -3,6 +3,11 @@ lager_journald_backend
 
 This is a backend for Lager.
 
+Version 1.1.3 - 22 Okt 2015
+---------------------------
+
+* added intelligent formatting (with type checking)
+
 Version 1.1.2 - 05 Okt 2015
 ---------------------------
 
