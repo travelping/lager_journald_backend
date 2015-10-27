@@ -3,6 +3,11 @@ lager_journald_backend
 
 This is a backend for Lager.
 
+Version 1.1.4 - 27 Okt 2015
+---------------------------
+
+* added rebar.config for ejournald dependency
+
 Version 1.1.3 - 22 Okt 2015
 ---------------------------
 

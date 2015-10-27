@@ -30,5 +30,6 @@ Building
 You can build lager_journald_backend via rebar:
 
 ```
+rebar get-deps
 rebar compile
 ```
