@@ -78,8 +78,16 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
 
 
 % Adjustment of the key to the accepted formatting of Journald
-journal_format(Key) ->
+journal_format(Key) when is_atom(Key) ->
     HKey = string:to_upper(atom_to_list(Key)),
+    re:replace(HKey, "[^a-zA-Z0-9]", "_", [global, {return, list}]);
+% We also want to accept binaries
+journal_format(Key) when is_binary(Key) ->
+    HKey = string:to_upper(binary_to_list(Key)),
+    re:replace(HKey, "[^a-zA-Z0-9]", "_", [global, {return, list}]);
+% We also want to accept strings as keys
+journal_format(Key) when is_list(Key) ->
+    HKey = string:to_upper(Key),
     re:replace(HKey, "[^a-zA-Z0-9]", "_", [global, {return, list}]).
 
 level_to_num(debug) -> 7;
