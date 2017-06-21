@@ -13,7 +13,7 @@ Configure Lager like this:
       {lager_journald_backend, [{level, info}]}
   ]}`
 
-All logs with the level of the configuration or higher will be send to journald.
+All logs with the level of the configuration or higher will be sent to journald.
 The default level is info, so in the case above you can simply write:
 
   `{handlers, [
