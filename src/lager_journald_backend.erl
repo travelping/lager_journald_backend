@@ -8,7 +8,7 @@
 -export([init/1, handle_call/2, handle_event/2, handle_info/2, terminate/2,
         code_change/3]).
 
--record(state, {level, formatter, formatter_config}).
+-record(state, {level, formatter, formatter_config, global_attributes}).
 
 %-include("lager.hrl").
 
@@ -19,9 +19,9 @@
 
 %% @private
 init(Config) ->
-    [Level, Formatter, FormatterConfig] = [proplists:get_value(K, Config, Def) || {K, Def} <-
-        [{level, info}, {formatter, lager_default_formatter}, {formatter_config, ?JOURNALD_FORMAT}]],
-    State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level)},
+    [Level, Formatter, FormatterConfig, GlobalAttributes] = [proplists:get_value(K, Config, Def) || {K, Def} <-
+        [{level, info}, {formatter, lager_default_formatter}, {formatter_config, ?JOURNALD_FORMAT}, {global_attributes, []}]],
+    State = #state{formatter=Formatter, formatter_config=FormatterConfig, level=lager_util:level_to_num(Level), global_attributes=GlobalAttributes},
     {ok, State}.
 
 %% @private
@@ -64,7 +64,7 @@ code_change(_OldVsn, State, _Extra) ->
 
 %% Internal functions
 
-write(Msg, #state{formatter=F, formatter_config=FConf}) ->
+write(Msg, #state{formatter=F, formatter_config=FConf, global_attributes = GlobalAttributes}) ->
     Text0 = F:format(Msg, FConf) -- ["\n"],
     Level = lager_msg:severity(Msg),
     Metadata = lager_msg:metadata(Msg),
@@ -73,7 +73,7 @@ write(Msg, #state{formatter=F, formatter_config=FConf}) ->
                 [{journal_format(K), to_list(V)} || {K,V} <- Metadata,
                  not ?CONTAINS(?ERL_PREFIXED_META, K) ] ++
                 [{"ERL_"++journal_format(K), to_list(V)} || {K,V} <- Metadata,
-                 ?CONTAINS(?ERL_PREFIXED_META, K) ],
+                 ?CONTAINS(?ERL_PREFIXED_META, K) ] ++ GlobalAttributes,
     ok = journald_api:sendv(Metalist).
 
 
